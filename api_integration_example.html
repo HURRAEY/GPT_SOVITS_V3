@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnAI Demo - GPT-SoVITS API</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .form-container {
+            padding: 40px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        .file-upload input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        .file-upload-label {
+            display: block;
+            padding: 12px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .file-upload-label:hover {
+            background: #e9ecef;
+        }
+        .generate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .generate-btn:hover {
+            transform: translateY(-2px);
+        }
+        .generate-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .audio-player {
+            width: 100%;
+            margin-top: 15px;
+        }
+        .advanced-options {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .toggle-advanced {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 AnAI TTS Studio</h1>
+            <p>AI 기반 고품질 음성 합성 서비스</p>
+        </div>
+        
+        <div class="form-container">
+            <form id="ttsForm">
+                <div class="form-group">
+                    <label for="referenceAudio">참조 음성 파일 (wav, mp3)</label>
+                    <div class="file-upload">
+                        <input type="file" id="referenceAudio" accept=".wav,.mp3" required>
+                        <label for="referenceAudio" class="file-upload-label">
+                            📁 클릭하여 참조 음성 파일을 선택하세요
+                        </label>
+                    </div>
+                    <small id="fileName" style="color: #6c757d; margin-top: 5px; display: block;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="promptText">참조 음성의 텍스트 (선택사항)</label>
+                    <input type="text" id="promptText" placeholder="참조 음성에서 말하는 내용을 입력하세요">
+                </div>
+
+                <div class="form-group">
+                    <label for="targetText">생성할 텍스트</label>
+                    <textarea id="targetText" placeholder="음성으로 변환할 텍스트를 입력하세요" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="language">언어</label>
+                    <select id="language" required>
+                        <option value="">언어를 선택하세요</option>
+                        <option value="ko">한국어</option>
+                        <option value="zh">중국어</option>
+                        <option value="en">영어</option>
+                        <option value="ja">일본어</option>
+                    </select>
+                </div>
+
+                <button type="button" class="toggle-advanced" onclick="toggleAdvanced()">
+                    🔧 고급 설정 (선택사항)
+                </button>
+
+                <div id="advancedOptions" class="advanced-options">
+                    <div class="form-group">
+                        <label for="temperature">창의성 (Temperature): <span id="tempValue">1.0</span></label>
+                        <input type="range" id="temperature" min="0.1" max="2.0" step="0.1" value="1.0" 
+                               oninput="document.getElementById('tempValue').textContent = this.value">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="topP">다양성 (Top P): <span id="topPValue">1.0</span></label>
+                        <input type="range" id="topP" min="0.1" max="1.0" step="0.1" value="1.0"
+                               oninput="document.getElementById('topPValue').textContent = this.value">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="speedFactor">속도: <span id="speedValue">1.0</span></label>
+                        <input type="range" id="speedFactor" min="0.5" max="2.0" step="0.1" value="1.0"
+                               oninput="document.getElementById('speedValue').textContent = this.value">
+                    </div>
+                </div>
+
+                <button type="submit" class="generate-btn" id="generateBtn">
+                    🎵 음성 생성하기
+                </button>
+            </form>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>AI가 음성을 생성하고 있습니다...</p>
+            </div>
+
+            <div id="result" class="result">
+                <h3>생성 완료!</h3>
+                <audio id="audioPlayer" class="audio-player" controls>
+                    Your browser does not support the audio element.
+                </audio>
+                <p><a id="downloadLink" download="generated_voice.wav">💾 음성 파일 다운로드</a></p>
+            </div>
+
+            <div id="error" class="result error">
+                <h3>오류 발생</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:9880';
+        
+        // 파일 선택 시 이름 표시
+        document.getElementById('referenceAudio').addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '';
+            document.getElementById('fileName').textContent = fileName ? `선택된 파일: ${fileName}` : '';
+        });
+
+        // 고급 설정 토글
+        function toggleAdvanced() {
+            const advanced = document.getElementById('advancedOptions');
+            const isVisible = advanced.style.display === 'block';
+            advanced.style.display = isVisible ? 'none' : 'block';
+        }
+
+        // 폼 제출 처리
+        document.getElementById('ttsForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const audioFile = document.getElementById('referenceAudio').files[0];
+            const targetText = document.getElementById('targetText').value;
+            const language = document.getElementById('language').value;
+            const promptText = document.getElementById('promptText').value;
+            
+            if (!audioFile || !targetText || !language) {
+                showError('모든 필수 항목을 입력해주세요.');
+                return;
+            }
+
+            // UI 상태 변경
+            showLoading(true);
+            hideResults();
+
+            try {
+                // 1. 참조 오디오 업로드 (실제 구현에서는 서버에 저장)
+                const audioPath = `/tmp/${audioFile.name}`;
+                
+                // 2. TTS API 호출
+                const requestData = {
+                    text: targetText,
+                    text_lang: language,
+                    ref_audio_path: audioPath,
+                    prompt_text: promptText,
+                    prompt_lang: language,
+                    temperature: parseFloat(document.getElementById('temperature').value),
+                    top_p: parseFloat(document.getElementById('topP').value),
+                    speed_factor: parseFloat(document.getElementById('speedFactor').value),
+                    text_split_method: 'cut5',
+                    batch_size: 1,
+                    media_type: 'wav'
+                };
+
+                const response = await fetch(`${API_BASE}/tts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                if (response.ok) {
+                    const audioBlob = await response.blob();
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    showSuccess(audioUrl);
+                } else {
+                    const errorData = await response.json();
+                    showError(errorData.message || '음성 생성에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('서버 연결에 실패했습니다. GPT-SoVITS 서버가 실행 중인지 확인해주세요.');
+            }
+
+            showLoading(false);
+        });
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('generateBtn').disabled = show;
+        }
+
+        function hideResults() {
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function showSuccess(audioUrl) {
+            const resultDiv = document.getElementById('result');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const downloadLink = document.getElementById('downloadLink');
+            
+            audioPlayer.src = audioUrl;
+            downloadLink.href = audioUrl;
+            resultDiv.style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 
